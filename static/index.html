@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>iRunning</title>
+    <!--[if lt IE 9]>
+        <script src="/static/js/html5.js"></script>
+    <![endif]-->
+    <link rel="stylesheet" href="/static/css/bootstrap.css" />
+    <link rel="stylesheet" href="/static/css/custom.css" />
+    <link rel="stylesheet" href="/static/css/jquery.jqplot.min.css" />
+    <script type="text/javascript" src="/static/js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.postjson.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.jqplot.min.js"></script>
+<!--[if lt IE 9]>
+    <script type="text/javascript" src="/static/js/excanvas.min.js"></script>
+<![endif]-->
+    <script type="text/javascript" src="/static/js/jqplot.canvasTextRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.canvasAxisTickRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.categoryAxisRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.dateAxisRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.barRenderer.min.js"></script>
+    <script type="text/javascript">
+var g_month_days = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function is_leap(y) {
+    if ((y % 100)==0)
+        return (y % 400)==0;
+    return (y % 4)==0;
+}
+
+function create_date_list(start, days) {
+    var y = Math.floor(start / 10000);
+    var m = Math.floor(start / 100) % 100;
+    var d = start % 100;
+    var L = [];
+    for (var i=0; i<days; i++) {
+        d = d + 1;
+        if (d > g_month_days[m]) {
+            if (m==2 && d==29 && is_leap(y)) {
+                L.push(y * 10000 + m * 100 + d);
+                continue;
+            }
+            m = m + 1;
+            d = 1;
+            if (m==13) {
+                y = y + 1;
+                m = 1;
+            }
+        }
+        L.push(y * 10000 + m * 100 + d);
+    }
+    return L;
+}
+
+var g_user_weight = {{ user.weight }};
+var g_sum_distance;
+var g_sum_time;
+
+var g_date_list;
+var g_data_dict;
+var g_chart_data_list;
+var g_sum_data_list;
+
+function draw_chart(n) {
+    var info = g_sum_data_list[n];
+    var time = Math.floor(info.time);
+    var h = Math.floor(time / 60);
+    var m = time % 60;
+    var txt = ' <b>' + m + '</b> 分钟';
+    if (h>0) {
+        txt = ' <b>' + h + '</b> 小时' + txt;
+    }
+    var ka = Math.floor(g_user_weight * info.distance * 1.036);
+    $('#span-distance').html(' <b>' + info.distance + '</b> 千米');
+    $('#span-time').html(txt);
+    $('#span-burn').html(' <b>' + ka + '</b> 千卡');
+    var bar_w = 3 * (4-n);
+    g_chart = $.jqplot('visit_chart', [g_chart_data_list[n]], {
+        grid: { background: "#fff", gridLineColor:"#fff", shadow: false, drawBorder: true },
+        series: [{renderer:$.jqplot.BarRenderer,    rendererOptions:{  barWidth:bar_w, shadowDepth:0 } }],
+        axes: {
+            xaxis: {
+                renderer: $.jqplot.CategoryAxisRenderer,
+            }
+        }
+    });
+    var offset = n==0 ? 150 : (n==1 ? 120 : (n==2 ? 90 : 0));
+    $('#visit_chart').bind('jqplotDataMouseOver', function (ev, seriesIndex, pointIndex, data) { 
+        var dt = g_date_list[offset + pointIndex];
+        var info = g_data_dict[dt];
+        if (info!=undefined) {
+            var m = Math.floor((info.rdate % 10000) / 100);
+            var d = info.rdate % 100;
+            var tm = info.rtime % 60;
+            var th = Math.floor(info.rtime / 60);
+            var ts = '';
+            if (th>0)
+                ts = ts + th + '小时';
+            if (tm>0)
+                ts = ts + tm + '分钟';
+            var sp = Math.floor(info.rdistance / info.rtime * 600) / 10;
+            $('#the-weibo-date').html('在' + m + '月' + d + '日跑了' + info.rdistance + '公里，耗时' + ts + '，时速达每小时' + sp + '公里：');
+            $('#the-weibo-text').html(format_text(info.text));
+            $('#the-weibo').show();
+        }
+        else {
+            $('#the-weibo').hide();
+        }
+    }); 
+}
+
+function update_chart(n) {
+    if ($('#loading').is(':visible') || $('#error').is(':visible'))
+        return;
+    $('#ul-select li').removeClass('active');
+    $('#li-' + n).addClass('active');
+    draw_chart(n);
+}
+
+function show_statistics() {
+    $('#error').hide();
+    $('#loading').hide();
+    $('#visit_chart').show();
+    draw_chart(0);
+}
+
+function sum_of(from_index, date_list, data_dict) {
+    var sum_d = 0;
+    var sum_t = 0;
+    for (var i=from_index; i<date_list.length; i++) {
+        var d = data_dict[date_list[i]];
+        if (d!=undefined) {
+            sum_d += d.rdistance;
+            sum_t += d.rtime;
+        }
+    }
+    return { 'distance': sum_d, 'time': sum_t };
+}
+
+function parse_statistics(start, days, data) {
+    var L = create_date_list(start, days);
+    var D = {};
+    for (var i=0; i<data.length; i++) {
+        var d = data[i];
+        D[d.rdate] = d;
+    }
+    var g_data_list = [];
+    var sum_distance = 0;
+    var sum_time = 0;
+    for (var i=0; i<days; i++) {
+        var d = D[L[i]];
+        if (d===undefined) {
+            g_data_list.push(0);
+        }
+        else {
+            g_data_list.push(d.rdistance);
+        }
+    }
+    g_sum_distance = sum_distance;
+    g_sum_time = sum_time;
+    g_data_dict = D;
+    g_chart_data_list = [
+        g_data_list.slice(-30),
+        g_data_list.slice(-60),
+        g_data_list.slice(-90),
+        g_data_list
+    ];
+    g_sum_data_list = [
+        sum_of(150, L, D),
+        sum_of(120, L, D),
+        sum_of(90, L, D),
+        sum_of(0, L, D),
+    ];
+    g_date_list = L;
+}
+
+function show_loading() {
+    $('#error').hide();
+    $('#visit_chart').hide();
+    $('#loading').show();
+}
+
+function get_statistics() {
+    show_loading();
+    $.postJSON('/statistics', $('#form-signed-request').serialize(), function(result) {
+            if (result.error) {
+                show_error();
+            }
+            else {
+                parse_statistics(result.start, result.days, result.data);
+                show_statistics();
+            }
+    }).error(function() {
+            show_error();
+    });
+}
+
+function show_error(err) {
+    $('#loading').hide();
+    $('#visit_chart').hide();
+    $('#error').show();
+}
+
+function update_timeline() {
+    show_loading();
+    $.postJSON('/update_timeline', $('#form-signed-request').serialize(), function(result) {
+            if (result.error) {
+                //show_error('获取微博失败！');
+            }
+            get_statistics();
+    }).error(function() {
+            //show_error('获取微博失败！');
+            get_statistics();
+    });
+}
+
+var g_all = /(\@[^\s\&\:\)\uff09\uff1a\@]+)|(\#[^\#]+\#)|(http\:\/\/[a-zA-Z0-9\_\/\.\-]+)/g;
+var g_at = /^\@[^\s\&\:\)\uff09\uff1a\@]+$/;
+var g_topic = /^\#[^\#]+\#$/;
+var g_link = /^http\:\/\/[a-zA-Z0-9\_\/\.\-]+$/;
+
+function format_text(t) {
+    ss = t.replace('<', '&lt;').replace('>', '&gt;').split(g_all);
+    L = []
+    $.each(ss, function(index, s) {
+        if (s===undefined)
+            return;
+        if (g_at.test(s)) {
+            L.push('<a href="http://weibo.com/n/' + s.substring(1) + '" target="_blank">' + s + '</a>');
+        }
+        else if (g_topic.test(s)) {
+            L.push('<a href="http://huati.weibo.com/k/' + s.substring(1, s.length-1) + '" target="_blank">' + s + '</a>');
+        }
+        else if (g_link.test(s)) {
+            L.push('<a href="' + s + '" target="_blank">' + s + '</a>');
+        }
+        else {
+            L.push(s);
+        }
+    });
+    return L.join('');
+}
+
+function post_weibo() {
+    var fdata = $('#form-post').serialize();
+    var n = get_left_chars();
+    if (n==280) {
+        alert('写点什么再发布吧！');
+        return;
+    }
+    if (n<0) {
+        alert('已超出字数限制！');
+        return;
+    }
+    $('#text-post').attr('disabled', 'disabled');
+    $('#btn-post').attr('disabled', 'disabled');
+    $('#span-posting').show();
+    $('#span-post-failed').hide();
+    $('#span-post-ok').hide();
+    // ajax post:
+    $.postJSON('/update', fdata, function(result) {
+            $('#text-post').removeAttr('disabled');
+            $('#btn-post').removeAttr('disabled');
+            $('#span-posting').hide();
+            if (result.error) {
+                $('#span-post-failed').show();
+            }
+            else {
+                $('#span-post-ok').show();
+                $('#text-post').val('');
+                load_weibo();
+            }
+    }).error(function() {
+            $('#text-post').removeAttr('disabled');
+            $('#btn-post').removeAttr('disabled');
+            $('#span-posting').hide();
+            $('#span-post-failed').show();
+    });
+}
+
+$(function() {
+    update_timeline();
+});
+    </script>
+</head>
+<body>
+    <form id="form-signed-request" name="form" action="/" style="display:none">
+        <input type="hidden" name="signed_request" value="{{ signed_request }}" />
+    </form>
+    <table style="width:760px;margin:20px 0px;">
+        <tr>
+            <td style="width:140px;text-align:center;">
+                <div><img src="{{ user_img }}" style="width:90px;height:90px;" /></div>
+                <div style="height:30px;line-height:30px;font-size:16px;"><a href="http://weibo.com/{{ user.id }}" target="_blank">{{ user.name }}</a></div>
+            </td>
+            <td>
+                <div class="info">累计跑了<span id="span-distance"> <b>?</b></span></div>
+                <div class="info">累计耗时<span id="span-time"> <b>?</b></span></div>
+                <div class="info">累计燃烧<span id="span-burn"> <b>?</b></span></div>
+            </td>
+        </tr>
+    </table>
+    <table style="width:760px">
+        <tr><td style="width:760px">
+            <ul id="ul-select" class="nav nav-pills">
+                <li id="li-0" class="active">
+                    <a href="javascript:update_chart(0)">最近1月</a>
+                </li>
+                <li id="li-1">
+                    <a href="javascript:update_chart(1)">最近2月</a>
+                </li>
+                <li id="li-2">
+                    <a href="javascript:update_chart(2)">最近3月</a>
+                </li>
+                <li id="li-3">
+                    <a href="javascript:update_chart(3)">最近6月</a>
+                </li>
+            </ul>
+        </td></tr>
+    </table>
+    <table style="width:760px">
+        <tr>
+            <td style="width:760px;">
+                <div style="width:760px;height:180px;overflow:hidden;">
+                    <div id="loading" style="width:760px;height:120px;padding-top:100px;text-align:center;display:none;"><span class="loading">正在努力为您生成图表……</span></div>
+                    <div id="error" style="width:760px;height:120px;padding-top:100px;text-align:center;display:none;"><span class="error">很抱歉，获取数据失败，<a href="http://apps.weibo.com/irunning" target="_top">请重试</a>！</span></div>
+                    <div id="visit_chart" style="width:760px;height:200px;display:none;"></div>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <table style="width:760px">
+        <tr><td style="width:760px">
+            <div id="the-weibo" style="margin-right:6px;display:none">
+                <div id="the-weibo-date" style="font-weight:bold;font-size:1.2em;padding:8px 0px;">在?月?日写到：</div>
+                <div id="the-weibo-text" style="border:1px solid #ccc;padding:12px;border-radius:8px;">???</div>
+            </div>
+        </td></tr>
+    </table>
+</body>
+</html>
