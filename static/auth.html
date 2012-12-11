@@ -1,10 +1,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>未授权时的页面</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>未授权时的页面</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.css" />
+    <link rel="stylesheet" href="/static/css/custom.css" />
+    <link rel="stylesheet" href="/static/css/jquery.jqplot.min.css" />
+    <!--[if lt IE 9]>
+        <script src="/static/js/html5.js"></script>
+    <![endif]-->
+    <script src="http://tjs.sjs.sinajs.cn/t35/apps/opent/js/frames/client.js" language="JavaScript"></script>
 </head>
-<script src="http://tjs.sjs.sinajs.cn/t35/apps/opent/js/frames/client.js" language="JavaScript"></script>
 <script>
 function authLoad() {
     App.AuthDialog.show({
@@ -14,7 +20,71 @@ function authLoad() {
     });
 }
 </script>
- 
+
 <body onload="authLoad();">
+<div style="display:block;width:760px;height:600px;overflow:hidden;position:absolute;left:0px;top:0px;">
+    <table style="width:760px;margin:20px 0px;">
+        <tr>
+            <td style="width:140px;text-align:center;">
+                <div><img src="/static/i/irunning-80x80.png" style="width:90px;height:90px;" /></div>
+                <div style="height:30px;line-height:30px;font-size:16px;"><a href="#" target="_blank">爱跑步的女孩</a></div>
+            </td>
+            <td>
+                <div class="info">累计跑了<span id="span-distance"> <b>115.4</b> 公里</span></div>
+                <div class="info">累计耗时<span id="span-time"> <b>13</b> 小时 <b>50</b> 分钟</span></div>
+                <div class="info">累计燃烧<span id="span-burn"> <b>8266</b> 千卡</span></div>
+            </td>
+        </tr>
+    </table>
+    <table style="width:760px">
+        <tr><td style="width:760px">
+            <ul id="ul-select" class="nav nav-pills">
+                <li id="li-0">
+                    <a href="javascript:void(0)">最近1月</a>
+                </li>
+                <li id="li-1">
+                    <a href="javascript:void(0)">最近2月</a>
+                </li>
+                <li id="li-2">
+                    <a href="javascript:void(0)">最近3月</a>
+                </li>
+                <li id="li-3" class="active">
+                    <a href="javascript:void(0)">最近6月</a>
+                </li>
+            </ul>
+        </td></tr>
+    </table>
+    <table style="width:760px">
+        <tr>
+            <td style="width:760px;">
+                <div style="width:760px;height:180px;overflow:hidden;">
+                    <div id="visit_chart" style="width:760px;height:200px;">
+                        <img src="/static/i/chart.jpg" />
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <table style="width:760px">
+        <tr><td style="width:760px">
+            <div id="the-weibo" style="margin-right:6px;">
+                <div id="the-weibo-date" style="font-weight:bold;font-size:1.2em;padding:8px 0px;">在9月26日跑了5公里，耗时36分钟，时速达每小时8.3公里：</div>
+                <div id="the-weibo-text" style="border:1px solid #ccc;padding:12px;border-radius:8px;">今天早上空气很好，跑步5公里耗时36分</div>
+            </div>
+        </td></tr>
+    </table>
+</div>
+<div style="display:block;width:760px;height:600px;overflow:hidden;position:absolute;left:0px;top:0px;background-color:#ccc;opacity:0.6;"></div>
+<!--[if lt IE 9]>
+    <script type="text/javascript" src="/static/js/excanvas.min.js"></script>
+<![endif]-->
+    <script type="text/javascript" src="/static/js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.postjson.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.jqplot.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.canvasTextRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.canvasAxisTickRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.categoryAxisRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.dateAxisRenderer.min.js"></script>
+    <script type="text/javascript" src="/static/js/jqplot.barRenderer.min.js"></script>
 </body>
 </html>
