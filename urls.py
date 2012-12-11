@@ -89,7 +89,7 @@ def index():
         user['auth_token'] = auth_token
         user['expired_time'] = expires
         db.insert('users', **user)
-    img = user.avatar_large or user.profile_image_url or user.image_url
+    img = user['avatar_large'] or user['profile_image_url'] or user['image_url']
     return Template('/static/index.html', user=user, user_img=img, signed_request=i.signed_request)
 
 @post('/update_timeline')
