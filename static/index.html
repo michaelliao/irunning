@@ -111,7 +111,7 @@ function draw_chart(n) {
 }
 
 function update_chart(n) {
-    if ($('#loading').is(':visible') || $('#error').is(':visible'))
+    if ($('#loading').is(':visible') || $('#error').is(':visible') || $('#empty').is(':visible'))
         return;
     $('#ul-select li').removeClass('active');
     $('#li-' + n).addClass('active');
@@ -188,6 +188,11 @@ function get_statistics() {
                 show_error();
             }
             else {
+                if (result.data.length==0) {
+                    $('#loading').hide();
+                    $('#empty').show();
+                    return;
+                }
                 parse_statistics(result.start, result.days, result.data);
                 show_statistics();
             }
@@ -243,40 +248,23 @@ function format_text(t) {
 }
 
 function post_weibo() {
-    var fdata = $('#form-post').serialize();
-    var n = get_left_chars();
-    if (n==280) {
+    var fdata = $('#form-weibo').serialize();
+    var n = $('#input-weibo-text').val().length;
+    if (n==0) {
         alert('写点什么再发布吧！');
         return;
     }
-    if (n<0) {
-        alert('已超出字数限制！');
-        return;
-    }
-    $('#text-post').attr('disabled', 'disabled');
+    $('#input-weibo-text').attr('disabled', 'disabled');
     $('#btn-post').attr('disabled', 'disabled');
-    $('#span-posting').show();
-    $('#span-post-failed').hide();
-    $('#span-post-ok').hide();
     // ajax post:
     $.postJSON('/update', fdata, function(result) {
-            $('#text-post').removeAttr('disabled');
-            $('#btn-post').removeAttr('disabled');
-            $('#span-posting').hide();
-            if (result.error) {
-                $('#span-post-failed').show();
-            }
-            else {
-                $('#span-post-ok').show();
-                $('#text-post').val('');
-                load_weibo();
-            }
+            window.top.location.assign('http://apps.weibo.com/irunning');
+            return;
     }).error(function() {
-            $('#text-post').removeAttr('disabled');
-            $('#btn-post').removeAttr('disabled');
-            $('#span-posting').hide();
-            $('#span-post-failed').show();
+            window.top.location.assign('http://apps.weibo.com/irunning');
+            return;
     });
+    return false;
 }
 
 $(function() {
@@ -326,6 +314,17 @@ $(function() {
                     <div id="loading" style="width:760px;height:120px;padding-top:100px;text-align:center;display:none;"><span class="loading">正在努力为您生成图表……</span></div>
                     <div id="error" style="width:760px;height:120px;padding-top:100px;text-align:center;display:none;"><span class="error">很抱歉，获取数据失败，<a href="http://apps.weibo.com/irunning" target="_top">请重试</a>！</span></div>
                     <div id="visit_chart" style="width:760px;height:200px;display:none;"></div>
+                    <div id="empty" style="width:760;height:180px;display:none">
+                        <div style="padding:12px;">噢，在你最近发的微博中没有找到任何跑步记录，赶快发一条微博试试吧！</div>
+                        <form id="form-weibo" name="form_newweibo" action="/postweibo" method="post" onsubmit="return post_weibo()">
+                            <div style="padding:12px;">
+                                <div class="input-append">
+                                    <input type="hidden" name="signed_request" value="{{ signed_request }}" />
+                                    <input id="input-weibo-text" type="text" name="text" value="今天跑了5公里，一共花了30分钟！[耶]" maxlength="140" style="width:380px" /><button id="btn-post" class="btn btn-primary">发微博</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </td>
         </tr>

@@ -100,8 +100,8 @@ def update_timeline():
     data = client.parse_signed_request(i.signed_request)
     if data is None:
         raise StandardError('Error!')
-    user_id = data.uid
-    auth_token = data.oauth_token
+    user_id = data.get('uid', '')
+    auth_token = data.get('oauth_token', '')
     if not user_id or not auth_token:
         return dict(error='bad_signature')
     expires = data.expires
@@ -149,18 +149,21 @@ def statistics():
 @post('/update')
 @jsonresult
 def update():
-    u = _check_cookie()
-    if u is None:
-        return dict(error='failed', redirect='/signin')
+    i = ctx.request.input()
     client = _create_client()
-    client.set_access_token(u.auth_token, u.expired_time)
-    try:
-        r = client.statuses.update.post(status=ctx.request['status'])
-        if 'error' in r:
-            return r
-        return dict(result='success')
-    except APIError, e:
-        return dict(error='failed')
+    data = client.parse_signed_request(i.signed_request)
+    if data is None:
+        raise StandardError('Error!')
+    user_id = data.get('uid', '')
+    auth_token = data.get('oauth_token', '')
+    if not user_id or not auth_token:
+        return dict(error='bad_signature')
+    expires = data.expires
+    client.set_access_token(auth_token, expires)
+    r = client.statuses.update.post(status=ctx.request['text'])
+    if 'error' in r:
+        return r
+    return dict(result='success')
 
 def _create_client(oauth_token=None, expires=None):
     client = APIClient(APP_ID, APP_SECRET, 'http://weiborun.sinaapp.com/callback')
