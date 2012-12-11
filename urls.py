@@ -59,8 +59,8 @@ def index():
     data = client.parse_signed_request(i.signed_request)
     if data is None:
         raise StandardError('Error!')
-    user_id = data.uid
-    auth_token = data.oauth_token
+    user_id = data.get('uid', '')
+    auth_token = data.get('oauth_token', '')
     if not user_id or not auth_token:
         return Template('/static/auth.html', client_id=APP_ID)
 
