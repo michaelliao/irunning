@@ -2,6 +2,12 @@
 ###############
 config.py
 
+# 3rd part file #
+#################
+
+transwarp
+weibo.py
+
 # Compiled source #
 ###################
 *.com
