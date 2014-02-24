@@ -7,7 +7,7 @@ import time, json, hmac, base64, logging, hashlib
 
 from datetime import datetime, tzinfo, timedelta
 
-from transwarp.web import ctx, get, post, route, seeother, forbidden, jsonresult, Template
+from transwarp.web import ctx, get, post, route, seeother, forbidden, Template
 from transwarp import db
 
 from config import APP_ID, APP_SECRET
@@ -15,6 +15,38 @@ from config import APP_ID, APP_SECRET
 from weibo import APIError, APIClient
 
 import record
+
+def _json_dumps(obj):
+    '''
+    Dumps any object as json string.
+
+    >>> class Person(object):
+    ...     def __init__(self, name):
+    ...         self.name = name
+    >>> _json_dumps([Person('Bob'), None])
+    '[{"name": "Bob"}, null]'
+    '''
+    def _dump_obj(obj):
+        if isinstance(obj, dict):
+            return obj
+        d = dict()
+        for k in dir(obj):
+            if not k.startswith('_'):
+                d[k] = getattr(obj, k)
+        return d
+    return json.dumps(obj, default=_dump_obj)
+
+def jsonresult(func):
+    '''
+    Autoconvert result to json str.
+    '''
+    @functools.wraps(func)
+    def _wrapper(*args, **kw):
+        r = func(*args, **kw)
+        ctx.response.content_type = 'application/json; charset=utf-8'
+        return _json_dumps(r)
+    return _wrapper
+
 
 _TD_ZERO = timedelta(0)
 _TD_8 = timedelta(hours=8)
