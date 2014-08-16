@@ -12,10 +12,12 @@ _PATTERN_NON_DIGITS = ur'[^0-9]'
 
 _PATTERN_TIME_M = ur'(%s)\s*\分\钟?' % _PATTERN_DIGITS
 _PATTERN_TIME_H = ur'(%s)\s*\小\时\s*%s{0,2}\s*(%s)\分\钟?' % (_PATTERN_DIGITS, _PATTERN_NON_DIGITS, _PATTERN_DIGITS)
+_PATTERN_TIME_H2 = ur'(%s)\s*\小\时\s*' % (_PATTERN_DIGITS,)
 _PATTERN_DISTANCE = ur'(%s)\s*k?m' % _PATTERN_DIGITS
 
 _RE_TIME_M = re.compile(_PATTERN_TIME_M)
 _RE_TIME_H = re.compile(_PATTERN_TIME_H)
+_RE_TIME_H2 = re.compile(_PATTERN_TIME_H2)
 _RE_DISTANCE = re.compile(_PATTERN_DISTANCE)
 
 def main():
@@ -27,6 +29,7 @@ def main():
         u'１小时零5分！9公里！',
         u'3分钟，1.2.1km',
         u'55.4分8KM!',
+        u'今早1小时8.5公里'
     ]
     for s in ss:
         print s
@@ -75,6 +78,9 @@ def _parse_time(text):
     m = _RE_TIME_H.match(text)
     if m:
         return _parse_digit(m.group(1)) * 60 + _parse_digit(m.group(2))
+    m = _RE_TIME_H2.match(text)
+    if m:
+        return _parse_digit(m.group(1)) * 60
     m = _RE_TIME_M.match(text)
     if m:
         return _parse_digit(m.group(1))
@@ -92,20 +98,19 @@ def _parse_text(s):
     pos = 0
     while True:
         m0 = _RE_TIME_H.search(s, pos)
-        m1 = _RE_TIME_M.search(s, pos)
-        m2 = _RE_DISTANCE.search(s, pos)
-        f = _find_first(m0, m1, m2)
+        m1 = _RE_TIME_H2.search(s, pos)
+        m2 = _RE_TIME_M.search(s, pos)
+        m3 = _RE_DISTANCE.search(s, pos)
+        f = _find_first(m0, m1, m2, m3)
         if f==(-1):
             break
-        if f==0:
-            pos = m0.end()
-            TL.append(Part(s[m0.start():m0.end()], m0.start(), m0.end(), (m0.end()-m0.start()+1)))
-        if f==1:
-            pos = m1.end()
-            TL.append(Part(s[m1.start():m1.end()], m1.start(), m1.end(), (m1.end()-m1.start()+1)))
-        if f==2:
-            pos = m2.end()
-            DL.append(Part(s[m2.start():m2.end()], m2.start(), m2.end(), (m2.end()-m2.start()+1)))
+        m = (m0, m1, m2, m3)[f]
+        pos = m.end()
+        part = Part(s[m.start():m.end()], m.start(), m.end(), (m.end()-m.start()+1))
+        if f<=2:
+            TL.append(part)
+        else:
+            DL.append(part)
     tls = [f for f in [_parse_time(p.text) for p in TL] if f > 0.0]
     dls = [f for f in [_parse_distance(p.text) for p in DL] if f > 0.0]
     if tls and dls:
